@@ -1,0 +1,61 @@
+#ifndef __I2C_H
+#define __I2C_H
+
+#include "global.h"
+
+#define MAX_TRIES 5
+typedef enum {
+    I2C_START,
+    I2C_DATA,
+    I2C_STOP
+}
+i2c_type_e;
+
+typedef enum {
+    I2C_IDLE,
+
+	I2C_WRITE_RETRY,
+	I2C_WRITE_START_WAIT,
+	I2C_WRITE_START_END,
+	I2C_WRITE_SLAVE_ADDR_WAIT,
+	I2C_WRITE_SLAVE_ADDR_END,
+	I2C_WRITE_SLAVE_COMM1_WAIT,
+	I2C_WRITE_SLAVE_COMM1_END,
+	I2C_WRITE_SLAVE_COMM2_WAIT,
+	I2C_WRITE_SLAVE_COMM2_END,
+	I2C_WRITE_DATA_WAIT,
+	I2C_WRITE_DATA_END,
+	I2C_WRITE_STOP,
+	I2C_WRITE_STOP_WAIT,
+	I2C_WRITE_STOP_END,
+
+	I2C_READ_RETRY,
+	I2C_READ_START_WAIT,
+	I2C_READ_START_END,
+	I2C_READ_SLAVE_ADDR_WAIT,
+	I2C_READ_SLAVE_ADDR_END,
+	I2C_READ_SLAVE_COMM1_WAIT,
+	I2C_READ_SLAVE_COMM1_END,
+	I2C_READ_SLAVE_COMM2_WAIT,
+	I2C_READ_SLAVE_COMM2_END,
+	I2C_READ_START2_WAIT,
+	I2C_READ_START2_END,
+	I2C_READ_SLAVE_ADDR2_WAIT,
+	I2C_READ_SLAVE_ADDR2_END,
+	I2C_READ_DATA_WAIT,
+	I2C_READ_DATA_END,
+	I2C_READ_STOP,
+	I2C_READ_STOP_WAIT,
+	I2C_READ_STOP_END,
+}
+i2c_state_e;
+
+extern uint8_t i2c_data;
+
+void check_i2c_status(void);
+void act_i2c(void);
+void i2c_startwriting(uint8_t dev_addr, uint16_t dev_comm, uint8_t dev_comm_len, uint8_t data);
+void i2c_startreading(uint8_t dev_addr, uint16_t dev_comm, uint8_t dev_comm_len);
+void i2c_setup(void);
+
+#endif //__I2C_H
