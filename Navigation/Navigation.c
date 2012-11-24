@@ -1,5 +1,6 @@
 #include "global.h"
-#include "control.h"
+#include "motor.h"
+#include "rc.h"
 
 
 int main(void)

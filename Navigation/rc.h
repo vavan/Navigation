@@ -1,29 +1,19 @@
-#ifndef MOTOR_H
-#define MOTOR_H
-
-
-/************************************************************************/
-/* Motor IDs */
-/************************************************************************/
-enum EMOTOR {
-	LMOTOR,
-	RMOTOR
-};
+#ifndef RC_H
+#define RC_H
 
 /************************************************************************/
-/* Init registers, timer for PWM for motors */
+/* Number of RC channels  */
 /************************************************************************/
-void init_motors();
-
-
-/**
- value: -100..0..+100 -> 1000..1500..2000 ms
-*/
+#define RC_CHANNEL_COUNT 3
 
 /************************************************************************/
-/* Set motor power. Range -100 (full backward) to +100 (full fwd) */
+/* Init RC (times, pin-change interrupts */
 /************************************************************************/
-void set_motor(int motor, int value);
+void init_RC();
 
+/************************************************************************/
+/* RC values */
+/************************************************************************/
+extern volatile byte rc_input[RC_CHANNEL_COUNT];
 
-#endif /* MOTOR_H */
+#endif  /* RC_H */
