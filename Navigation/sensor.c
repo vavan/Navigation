@@ -1,23 +1,24 @@
 #include "global.h"
 #include <stddef.h>
 #include <stdlib.h>
-
+#include "i2c_sync.h"
 
 // TBD
-uint32_t micros();
 uint currentTime = 0; 
-uint16_t constrain(uint16_t, uint16_t, uint16_t);
-void writeParams(uint16_t);
+//uint16_t constrain(uint16_t, uint16_t, uint16_t);
+void writeParams(uint16_t a)
+{
+ //TBD	
+}
+
 #define delay(x) _delay_ms(x)
+#define constrain(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
 
 
 
-
-
-int16_t  i2c_errors_count = 0;
 uint16_t calibratingG;
-int16_t  gyroADC[3],accADC[3],accSmooth[3],magADC[3];
-int16_t gyroData[3] = {0,0,0};
+int16_t  gyroADC[3],accADC[3],magADC[3];
+//int16_t gyroData[3] = {0,0,0};
 int16_t gyroZero[3] = {0,0,0};
 int16_t angle[2]    = {0,0};  // absolute angle inclination in multiple of 0.1 degree    180 deg = 1800
 uint16_t calibratingA = 0;
@@ -71,29 +72,24 @@ struct flags_struct {
 
 // part of config.h
 
-    #define POWERPIN_PINMODE           ;
-    #define POWERPIN_ON                ;
-    #define POWERPIN_OFF               ;
-	
-  #define ITG3200
-  #define BMA180
-  #define HMC5883
-  #define BMP085
-  
-  #define GYRO 1
-  #define ACC 1
-  #define MAG 1
-  #define BARO 1
-  
-  
-  #define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = -X; accADC[PITCH]  = -Y; accADC[YAW]  =  Z;}
-  #define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}
-  #define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  =  X; magADC[PITCH]  =  Y; magADC[YAW]  = -Z;}
-  #undef INTERNAL_I2C_PULLUPS
+#define POWERPIN_PINMODE           ;
+#define POWERPIN_ON                ;
+#define POWERPIN_OFF               ;
 
-
-#define INTERNAL_I2C_PULLUPS
-#define I2C_SPEED 400000L
+#define ITG3200
+#define BMA180
+#define HMC5883
+#define BMP085
+  
+#define GYRO 1
+#define ACC 1
+#define MAG 1
+#define BARO 1
+  
+  
+#define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = -X; accADC[PITCH]  = -Y; accADC[YAW]  =  Z;}
+#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}
+#define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  =  X; magADC[PITCH]  =  Y; magADC[YAW]  = -Z;}
 
 
 
@@ -112,8 +108,6 @@ struct flags_struct {
 	      #define ITG3200_SMPLRT_DIV 0  //8000Hz
 	      #define ITG3200_DLPF_CFG   0
 	  
-  #define I2C_PULLUPS_ENABLE         PORTC |= 1<<4; PORTC |= 1<<5;   // PIN A4&A5 (SDA&SCL)
-  #define I2C_PULLUPS_DISABLE        PORTC &= ~(1<<4); PORTC &= ~(1<<5);	  
 	  
 // SENSORS
 	  
@@ -121,147 +115,17 @@ struct flags_struct {
 // ************************************************************************************************************
 // board orientation and setup
 // ************************************************************************************************************
-//default board orientation
-#if !defined(ACC_ORIENTATION) 
-  #define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = X; accADC[PITCH]  = Y; accADC[YAW]  = Z;}
-#endif
-#if !defined(GYRO_ORIENTATION) 
-  #define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] = X; gyroADC[PITCH] = Y; gyroADC[YAW] = Z;}
-#endif
-#if !defined(MAG_ORIENTATION) 
-  #define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  = X; magADC[PITCH]  = Y; magADC[YAW]  = Z;}
-#endif
 
 /*** I2C address ***/
-#if !defined(BMA180_ADDRESS) 
-  #define BMA180_ADDRESS 0x40
-  //#define BMA180_ADDRESS 0x41
-#endif
+#define BMA180_ADDRESS 0x40
 
-#if !defined(ITG3200_ADDRESS) 
-  #define ITG3200_ADDRESS 0X68
-  //#define ITG3200_ADDRESS 0X69
-#endif
+#define ITG3200_ADDRESS 0X68
 
 
 uint8_t rawADC[6];
-uint32_t neutralizeTime = 0;
-  
-// ************************************************************************************************************
-// I2C general functions
-// ************************************************************************************************************
-void waitTransmissionI2C() {
-	uint16_t count = 255;
-	while (!(TWCR & (1<<TWINT))) {
-		count--;
-		if (count==0) {              //we are in a blocking state => we don't insist
-		TWCR = 0;                  //and we force a reset on TWINT register
-		neutralizeTime = micros(); //we take a timestamp here to neutralize the value during a short delay
-		i2c_errors_count++;
-		break;
-	}
-}
-}
-
-void i2c_init(void) {
-  #if defined(INTERNAL_I2C_PULLUPS)
-    I2C_PULLUPS_ENABLE
-  #else
-    I2C_PULLUPS_DISABLE
-  #endif
-  TWSR = 0;                                    // no prescaler => prescaler = 1
-  TWBR = ((F_CPU / I2C_SPEED) - 16) / 2;   // change the I2C clock rate
-  TWCR = 1<<TWEN;                              // enable twi module, no interrupt
-}
-
-void i2c_rep_start(uint8_t address) {
-  TWCR = (1<<TWINT) | (1<<TWSTA) | (1<<TWEN) ; // send REPEAT START condition
-  waitTransmissionI2C();                       // wait until transmission completed
-  TWDR = address;                              // send device address
-  TWCR = (1<<TWINT) | (1<<TWEN);
-  waitTransmissionI2C();                       // wail until transmission completed
-}
-
-void i2c_stop(void) {
-  TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-  //  while(TWCR & (1<<TWSTO));                // <- can produce a blocking state with some WMP clones
-}
-
-void i2c_write(uint8_t data ) {	
-  TWDR = data;                                 // send data to the previously addressed device
-  TWCR = (1<<TWINT) | (1<<TWEN);
-  waitTransmissionI2C();
-}
-
-uint8_t i2c_read(uint8_t ack) {
-  TWCR = (1<<TWINT) | (1<<TWEN) | (ack? (1<<TWEA) : 0);
-  waitTransmissionI2C();
-  uint8_t r = TWDR;
-  if (!ack) i2c_stop();
-  return r;
-}
-
-uint8_t i2c_readAck() {
-  return i2c_read(1);
-}
-
-uint8_t i2c_readNak(void) {
-  return i2c_read(0);
-}
-
-
-
-size_t i2c_read_to_buf(uint8_t add, void *buf, size_t size) {
-  i2c_rep_start((add<<1) | 1);	// I2C read direction
-  size_t bytes_read = 0;
-  uint8_t *b = (uint8_t*)buf;
-  while (size--) {
-    /* acknowledge all but the final byte */
-    *b++ = i2c_read(size > 0);
-    /* TODO catch I2C errors here and abort */
-    bytes_read++;
-  }
-  return bytes_read;
-}
-
-size_t i2c_read_reg_to_buf(uint8_t add, uint8_t reg, void *buf, size_t size) {
-  i2c_rep_start(add<<1); // I2C write direction
-  i2c_write(reg);        // register selection
-  return i2c_read_to_buf(add, buf, size);
-}
-
-/* transform a series of bytes from big endian to little
-   endian and vice versa. */
-void swap_endianness(void *buf, size_t size) {
-  /* we swap in-place, so we only have to
-  * place _one_ element on a temporary tray
-  */
-  uint8_t tray;
-  uint8_t *from;
-  uint8_t *to;
-  /* keep swapping until the pointers have assed each other */
-  for (from = (uint8_t*)buf, to = &from[size-1]; from < to; from++, to--) {
-    tray = *from;
-    *from = *to;
-    *to = tray;
-  }
-}
 
 void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
-  i2c_read_reg_to_buf(add, reg, &rawADC, 6);
-}
-
-void i2c_writeReg(uint8_t add, uint8_t reg, uint8_t val) {
-  i2c_rep_start(add<<1); // I2C write direction
-  i2c_write(reg);        // register selection
-  i2c_write(val);        // value to write in register
-  i2c_stop();
-}
-
-uint8_t i2c_readReg(uint8_t add, uint8_t reg) {
-  uint8_t val;
-  i2c_read_reg_to_buf(add, reg, &val, 1);
-  return val;
+	i2c_read_reg_to_buf(add, reg, &rawADC, 6);
 }
 
 // ****************
@@ -271,6 +135,8 @@ void GYRO_Common() {
   static int16_t previousGyroADC[3] = {0,0,0};
   static int32_t g[3];
   uint8_t axis;
+  
+  
   
   if (calibratingG>0) {
     for (axis = 0; axis < 3; axis++) {
@@ -323,6 +189,7 @@ void ACC_Common() {
       writeParams(1); // write accZero in EEPROM
     }
     calibratingA--;
+	
   }
   accADC[ROLL]  -=  conf.accZero[ROLL] ;
   accADC[PITCH] -=  conf.accZero[PITCH];
@@ -511,7 +378,7 @@ void ACC_init () {
   acc_1G = 255;
 }
 
-void ACC_getADC () {
+void acc_getADC () {
   TWBR = ((F_CPU / 400000L) - 16) / 2;  // Optional line.  Sensor is good for it in the spec.
   i2c_getSixRawADC(BMA180_ADDRESS,0x02);
   //usefull info is on the 14 bits  [2-15] bits  /4 => [0-13] bits  /4 => 12 bit resolution
@@ -535,19 +402,21 @@ void ACC_getADC () {
 // 3) sample rate = 1000Hz ( 1kHz/(div+1) )
 // ************************************************************************************************************
 #if defined(ITG3200)
+#define ITG3200_DLPF_CFG 0
+
 void Gyro_init() {
   delay(100);
   i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x80); //register: Power Management  --  value: reset device
-//  delay(5);
-//  i2c_writeReg(ITG3200_ADDRESS, 0x15, ITG3200_SMPLRT_DIV); //register: Sample Rate Divider  -- default value = 0: OK
   delay(5);
   i2c_writeReg(ITG3200_ADDRESS, 0x16, 0x18 + ITG3200_DLPF_CFG); //register: DLPF_CFG - low pass filter configuration
   delay(5);
-  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x03); //register: Power Management  --  value: PLL with Z Gyro reference
+  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x03 | (1<<4) | (1<<5)); //register: Power Management  --  value: PLL with Z Gyro reference
+                                                               // x and y axis are in sleep
+  
   delay(100);
 }
 
-void Gyro_getADC () {
+void gyro_getADC () {
   TWBR = ((F_CPU / 400000L) - 16) / 2; // change the I2C clock rate to 400kHz
   i2c_getSixRawADC(ITG3200_ADDRESS,0X1D);
   GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
@@ -567,13 +436,13 @@ static uint8_t magInit = 0;
 
 void Device_Mag_getADC();
 
-void Mag_getADC() {
+void mag_getADC() {
   static uint32_t t,tCal = 0;
   static int16_t magZeroTempMin[3];
   static int16_t magZeroTempMax[3];
   uint8_t axis;
-  if ( currentTime < t ) return; //each read is spaced by 100ms
-  t = currentTime + 100000;
+  //if ( currentTime < t ) return; //each read is spaced by 100ms
+  //t = currentTime + 100000;
   TWBR = ((F_CPU / 400000L) - 16) / 2; // change the I2C clock rate to 400kHz
   Device_Mag_getADC();
   magADC[ROLL]  = magADC[ROLL]  * magCal[ROLL];
@@ -614,11 +483,11 @@ void Mag_getADC() {
 void getADC();
 
 // ************************************************************************************************************
-// I2C Compass HMC5843 & HMC5883
+// I2C Compass HMC5883
 // ************************************************************************************************************
 // I2C adress: 0x3C (8bit)   0x1E (7bit)
 // ************************************************************************************************************
-#if defined(HMC5843) || defined(HMC5883)
+#if defined(HMC5883)
   #define MAG_ADDRESS 0x1E
   #define MAG_DATA_REGISTER 0x03
   
@@ -637,15 +506,9 @@ void getADC();
     delay(100);
       getADC();
     delay(10);
-    #if defined(HMC5883)
       magCal[ROLL]  =  1160.0 / abs(magADC[ROLL]);
       magCal[PITCH] =  1160.0 / abs(magADC[PITCH]);
       magCal[YAW]   =  1080.0 / abs(magADC[YAW]);
-    #else
-      magCal[ROLL]  =  1000.0 / abs(magADC[ROLL]);
-      magCal[PITCH] =  1000.0 / abs(magADC[PITCH]);
-      magCal[YAW]   =  1000.0 / abs(magADC[YAW]);
-    #endif
 
     // leave test mode
     i2c_writeReg(MAG_ADDRESS ,0x00 ,0x70 ); //Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
@@ -657,16 +520,9 @@ void getADC();
 
 void getADC() {
   i2c_getSixRawADC(MAG_ADDRESS,MAG_DATA_REGISTER);
-  #if defined(HMC5843)
-    MAG_ORIENTATION( ((rawADC[0]<<8) | rawADC[1]) ,
-                     ((rawADC[2]<<8) | rawADC[3]) ,
-                     ((rawADC[4]<<8) | rawADC[5]) );
-  #endif
-  #if defined (HMC5883)  
     MAG_ORIENTATION( ((rawADC[0]<<8) | rawADC[1]) ,
                      ((rawADC[4]<<8) | rawADC[5]) ,
                      ((rawADC[2]<<8) | rawADC[3]) );
-  #endif
 }
 
 
@@ -678,15 +534,23 @@ void Device_Mag_getADC() {
 
 
 
-void initSensors() {
+void init_sensors() {
   delay(200);
   POWERPIN_ON;
   delay(100);
   i2c_init();
   delay(100);
   if (GYRO) Gyro_init();
-  if (BARO) Baro_init();
+  //if (BARO) Baro_init();
   if (MAG) Mag_init();
   if (ACC) {ACC_init();acc_25deg = acc_1G * 0.423;}
   f.I2C_INIT_DONE = 1;
+  
+  
+  
+  memset(&conf, 0, sizeof(conf));
+  memset(&f, 0, sizeof(f));
+  
+  calibratingA = 400;
+  calibratingG = 400;
 }

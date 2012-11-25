@@ -7,8 +7,10 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "uart.h"
 #include "gpio.h"
+
 
 
 typedef uint16_t uint;
