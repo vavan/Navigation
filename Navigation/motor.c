@@ -19,10 +19,10 @@ void init_motors()
 
 void set_motor(int motor, int value)
 {
-	if ((value >= -100) && (value <= +100)) {
-		value = (value * 5) + 1500;
+	//if ((value >= -100) && (value <= +100)) {
+		//value = (value * 5) + 1500;
 		if (motor == RMOTOR) OCR1A = value * 2;
 		if (motor == LMOTOR) OCR1B = value * 2;
-	}
+	//}
 }
 

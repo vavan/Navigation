@@ -2,13 +2,13 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include "i2c_sync.h"
+#include "sysparam.h"
+#include "sensor.h"
 
 // TBD
-uint currentTime = 0; 
-//uint16_t constrain(uint16_t, uint16_t, uint16_t);
 void writeParams(uint16_t a)
 {
- //TBD	
+	//TBD
 }
 
 #define delay(x) _delay_ms(x)
@@ -17,11 +17,11 @@ void writeParams(uint16_t a)
 
 
 uint16_t calibratingG;
+uint16_t calibratingA = 0;
 int16_t  gyroADC[3],accADC[3],magADC[3];
-//int16_t gyroData[3] = {0,0,0};
 int16_t gyroZero[3] = {0,0,0};
 int16_t angle[2]    = {0,0};  // absolute angle inclination in multiple of 0.1 degree    180 deg = 1800
-uint16_t calibratingA = 0;
+
 uint16_t acc_1G;  
 int32_t  BaroAlt;
 int16_t  acc_25deg;
@@ -31,44 +31,7 @@ int16_t  acc_25deg;
 #define YAW        2
 #define THROTTLE   3
 
-#define PIDITEMS 10
-#define CHECKBOXITEMS 14
-struct {
-	uint8_t checkNewConf;
-	uint8_t P8[PIDITEMS], I8[PIDITEMS], D8[PIDITEMS];
-	uint8_t rcRate8;
-	uint8_t rcExpo8;
-	uint8_t rollPitchRate;
-	uint8_t yawRate;
-	uint8_t dynThrPID;
-	uint8_t thrMid8;
-	uint8_t thrExpo8;
-	int16_t accZero[3];
-	int16_t magZero[3];
-	int16_t angleTrim[2];
-	uint16_t activate[CHECKBOXITEMS];
-	uint8_t powerTrigger1;
-} conf;
 
-
-struct flags_struct {
-	uint8_t OK_TO_ARM :1 ;
-	uint8_t ARMED :1 ;
-	uint8_t I2C_INIT_DONE :1 ; // For i2c gps we have to now when i2c init is done, so we can update parameters to the i2cgps from eeprom (at startup it is done in setup())
-	uint8_t ACC_CALIBRATED :1 ;
-	uint8_t NUNCHUKDATA :1 ;
-	uint8_t ACC_MODE :1 ;
-	uint8_t MAG_MODE :1 ;
-	uint8_t BARO_MODE :1 ;
-	uint8_t GPS_HOME_MODE :1 ;
-	uint8_t GPS_HOLD_MODE :1 ;
-	uint8_t HEADFREE_MODE :1 ;
-	uint8_t PASSTHRU_MODE :1 ;
-	uint8_t GPS_FIX :1 ;
-	uint8_t GPS_FIX_HOME :1 ;
-	uint8_t SMALL_ANGLES_25 :1 ;
-	uint8_t CALIBRATE_MAG :1 ;
-} f;
 
 // part of config.h
 
@@ -128,73 +91,7 @@ void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
 	i2c_read_reg_to_buf(add, reg, &rawADC, 6);
 }
 
-// ****************
-// GYRO common part
-// ****************
-void GYRO_Common() {
-  static int16_t previousGyroADC[3] = {0,0,0};
-  static int32_t g[3];
-  uint8_t axis;
-  
-  
-  
-  if (calibratingG>0) {
-    for (axis = 0; axis < 3; axis++) {
-      // Reset g[axis] at start of calibration
-      if (calibratingG == 400) g[axis]=0;
-      // Sum up 400 readings
-      g[axis] +=gyroADC[axis];
-      // Clear global variables for next reading
-      gyroADC[axis]=0;
-      gyroZero[axis]=0;
-      if (calibratingG == 1) {
-        gyroZero[axis]=g[axis]/400;
-        // TBD blinkLED(10,15,1);
-      }
-    }
-    calibratingG--;
-  }
 
- for (axis = 0; axis < 3; axis++) {
-	 gyroADC[axis]  -= gyroZero[axis];
-	 //anti gyro glitch, limit the variation between two consecutive readings
-	 gyroADC[axis] = constrain(gyroADC[axis],previousGyroADC[axis]-800,previousGyroADC[axis]+800);
-    previousGyroADC[axis] = gyroADC[axis];
-  }
-}
-
-// ****************
-// ACC common part
-// ****************
-void ACC_Common() {
-  static int32_t a[3];
-  
-  if (calibratingA>0) {
-    for (uint8_t axis = 0; axis < 3; axis++) {
-      // Reset a[axis] at start of calibration
-      if (calibratingA == 400) a[axis]=0;
-      // Sum up 400 readings
-      a[axis] +=accADC[axis];
-      // Clear global variables for next reading
-      accADC[axis]=0;
-      conf.accZero[axis]=0;
-    }
-    // Calculate average, shift Z down by acc_1G and store values in EEPROM at end of calibration
-    if (calibratingA == 1) {
-      conf.accZero[ROLL]  = a[ROLL]/400;
-      conf.accZero[PITCH] = a[PITCH]/400;
-      conf.accZero[YAW]   = a[YAW]/400-acc_1G; // for nunchuk 200=1G
-      conf.angleTrim[ROLL]   = 0;
-      conf.angleTrim[PITCH]  = 0;
-      writeParams(1); // write accZero in EEPROM
-    }
-    calibratingA--;
-	
-  }
-  accADC[ROLL]  -=  conf.accZero[ROLL] ;
-  accADC[PITCH] -=  conf.accZero[PITCH];
-  accADC[YAW]   -=  conf.accZero[YAW] ;
-}
 
 
 // ************************************************************************************************************
@@ -311,8 +208,8 @@ void i2c_BMP085_Calculate() {
 
 
 void Baro_update() {
-  if (currentTime < bmp085_ctx.deadline) return; 
-  bmp085_ctx.deadline = currentTime;
+  //TBD //if (currentTime < bmp085_ctx.deadline) return; 
+  //bmp085_ctx.deadline = currentTime;
   TWBR = ((F_CPU / 400000L) - 16) / 2; // change the I2C clock rate to 400kHz, BMP085 is ok with this speed
   switch (bmp085_ctx.state) {
     case 0: 
@@ -355,6 +252,41 @@ void Baro_update() {
 //                      |          xxxxxxxxxxxxx              |                    8G:   101       | xxxxxxxx |
 // ************************************************************************************************************
 #if defined(BMA180)
+
+// ****************
+// ACC common part
+// ****************
+void ACC_Common() {
+	static int32_t a[3];
+	
+	if (calibratingA>0) {
+		for (uint8_t axis = 0; axis < 3; axis++) {
+			// Reset a[axis] at start of calibration
+			if (calibratingA == 400) a[axis]=0;
+			// Sum up 400 readings
+			a[axis] +=accADC[axis];
+			// Clear global variables for next reading
+			accADC[axis]=0;
+			sysparam.acc.zero[axis]=0;
+		}
+		// Calculate average, shift Z down by acc_1G and store values in EEPROM at end of calibration
+		if (calibratingA == 1) {
+			sysparam.acc.zero[ROLL]  = a[ROLL]/400;
+			sysparam.acc.zero[PITCH] = a[PITCH]/400;
+			sysparam.acc.zero[YAW]   = a[YAW]/400-acc_1G; // for nunchuk 200=1G
+			//conf.angleTrim[ROLL]   = 0;
+			//conf.angleTrim[PITCH]  = 0;
+			sysparam.acc.is_calibrated = 1;
+			save_sysparam();
+		}
+		calibratingA--;
+		
+	}
+	accADC[ROLL]  -=  sysparam.acc.zero[ROLL] ;
+	accADC[PITCH] -=  sysparam.acc.zero[PITCH];
+	accADC[YAW]   -=  sysparam.acc.zero[YAW] ;
+}
+
 void ACC_init () {
   delay(10);
   //default range 2G: 1G = 4096 unit.
@@ -401,8 +333,44 @@ void acc_getADC () {
 // or 2) I2C adress is set to 0x68 (AD0 PIN connected to GND)
 // 3) sample rate = 1000Hz ( 1kHz/(div+1) )
 // ************************************************************************************************************
+
 #if defined(ITG3200)
+
 #define ITG3200_DLPF_CFG 0
+
+// ****************
+// GYRO common part
+// ****************
+void GYRO_Common() {
+static int16_t previousGyroADC[3] = {0,0,0};
+static int32_t g[3];
+uint8_t axis;
+
+if (calibratingG>0) {
+	for (axis = 0; axis < 3; axis++) {
+		// Reset g[axis] at start of calibration
+		if (calibratingG == 400) g[axis]=0;
+		// Sum up 400 readings
+		g[axis] +=gyroADC[axis];
+		// Clear global variables for next reading
+		gyroADC[axis]=0;
+		gyroZero[axis]=0;
+		if (calibratingG == 1) {
+			gyroZero[axis]=g[axis]/400;
+			// TBD blinkLED(10,15,1);
+		}
+	}
+	calibratingG--;
+}
+
+for (axis = 0; axis < 3; axis++) {
+	gyroADC[axis]  -= gyroZero[axis];
+	//anti gyro glitch, limit the variation between two consecutive readings
+	gyroADC[axis] = constrain(gyroADC[axis],previousGyroADC[axis]-800,previousGyroADC[axis]+800);
+	previousGyroADC[axis] = gyroADC[axis];
+}
+
+}
 
 void Gyro_init() {
   delay(100);
@@ -410,7 +378,7 @@ void Gyro_init() {
   delay(5);
   i2c_writeReg(ITG3200_ADDRESS, 0x16, 0x18 + ITG3200_DLPF_CFG); //register: DLPF_CFG - low pass filter configuration
   delay(5);
-  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x03 | (1<<4) | (1<<5)); //register: Power Management  --  value: PLL with Z Gyro reference
+  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x03);// | (1<<4) | (1<<5)); //register: Power Management  --  value: PLL with Z Gyro reference
                                                                // x and y axis are in sleep
   
   delay(100);
@@ -422,10 +390,16 @@ void gyro_getADC () {
   GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
                     ((rawADC[2]<<8) | rawADC[3])/4 ,
                     ((rawADC[4]<<8) | rawADC[5])/4 );
+
+
+
+//int16_t a = ((rawADC[0]<<8) | rawADC[1]) / 4;
+//printf("%d\n", gyroADC[0]);					
+  					
   GYRO_Common();
+  //printf(" --- %d\n", gyroADC[0]);
 }
 #endif
-
 
 // ************************************************************************************************************
 // I2C Compass common function
@@ -441,31 +415,34 @@ void mag_getADC() {
   static int16_t magZeroTempMin[3];
   static int16_t magZeroTempMax[3];
   uint8_t axis;
-  //if ( currentTime < t ) return; //each read is spaced by 100ms
-  //t = currentTime + 100000;
+  uint32_t currentTime = now();
+  if ( currentTime < t ) return; //each read is spaced by 100ms
+  t = currentTime + 100000;
   TWBR = ((F_CPU / 400000L) - 16) / 2; // change the I2C clock rate to 400kHz
   Device_Mag_getADC();
   magADC[ROLL]  = magADC[ROLL]  * magCal[ROLL];
   magADC[PITCH] = magADC[PITCH] * magCal[PITCH];
   magADC[YAW]   = magADC[YAW]   * magCal[YAW];
-  if (f.CALIBRATE_MAG) {
+  
+  if (!sysparam.mag.is_calibrated) {
     tCal = t;
     for(axis=0;axis<3;axis++) {
-      conf.magZero[axis] = 0;
+      sysparam.mag.zero[axis] = 0;
       magZeroTempMin[axis] = magADC[axis];
       magZeroTempMax[axis] = magADC[axis];
     }
-    f.CALIBRATE_MAG = 0;
+    sysparam.mag.is_calibrated = 1;
   }
+  
   if (magInit) { // we apply offset only once mag calibration is done
-    magADC[ROLL]  -= conf.magZero[ROLL];
-    magADC[PITCH] -= conf.magZero[PITCH];
-    magADC[YAW]   -= conf.magZero[YAW];
+    magADC[ROLL]  -= sysparam.mag.zero[ROLL];
+    magADC[PITCH] -= sysparam.mag.zero[PITCH];
+    magADC[YAW]   -= sysparam.mag.zero[YAW];
   }
  
   if (tCal != 0) {
     if ((t - tCal) < 30000000) { // 30s: you have 30s to turn the multi in all directions
-      //LEDPIN_TOGGLE;
+      LEDPIN_TOGGLE;
       for(axis=0;axis<3;axis++) {
         if (magADC[axis] < magZeroTempMin[axis]) magZeroTempMin[axis] = magADC[axis];
         if (magADC[axis] > magZeroTempMax[axis]) magZeroTempMax[axis] = magADC[axis];
@@ -473,12 +450,12 @@ void mag_getADC() {
     } else {
       tCal = 0;
       for(axis=0;axis<3;axis++)
-        conf.magZero[axis] = (magZeroTempMin[axis] + magZeroTempMax[axis])/2;
-      writeParams(1);
+        sysparam.mag.zero[axis] = (magZeroTempMin[axis] + magZeroTempMax[axis])/2;
+		save_sysparam();
     }
   }
 }
-#endif
+
 
 void getADC();
 
@@ -511,9 +488,9 @@ void getADC();
       magCal[YAW]   =  1080.0 / abs(magADC[YAW]);
 
     // leave test mode
-    i2c_writeReg(MAG_ADDRESS ,0x00 ,0x70 ); //Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
-    i2c_writeReg(MAG_ADDRESS ,0x01 ,0x20 ); //Configuration Register B  -- 001 00000    configuration gain 1.3Ga
-    i2c_writeReg(MAG_ADDRESS ,0x02 ,0x00 ); //Mode register             -- 000000 00    continuous Conversion Mode
+    i2c_writeReg(MAG_ADDRESS, 0x00, 0x70 ); //Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
+    i2c_writeReg(MAG_ADDRESS, 0x01, 0x20 ); //Configuration Register B  -- 001 00000    configuration gain 1.3Ga
+    i2c_writeReg(MAG_ADDRESS, 0x02, 0x00 ); //Mode register             -- 000000 00    continuous Conversion Mode
 
     magInit = 1;
   }
@@ -531,10 +508,18 @@ void Device_Mag_getADC() {
 }
 
 #endif
+#endif
 
 
+void task_sensors() 
+{
+	gyro_getADC();
+	acc_getADC();
+	mag_getADC();	
+}
 
-void init_sensors() {
+void init_sensors() 
+{
   delay(200);
   POWERPIN_ON;
   delay(100);
@@ -544,12 +529,9 @@ void init_sensors() {
   //if (BARO) Baro_init();
   if (MAG) Mag_init();
   if (ACC) {ACC_init();acc_25deg = acc_1G * 0.423;}
-  f.I2C_INIT_DONE = 1;
   
-  
-  
-  memset(&conf, 0, sizeof(conf));
-  memset(&f, 0, sizeof(f));
+  //memset(&conf, 0, sizeof(conf));
+  //memset(&f, 0, sizeof(f));
   
   calibratingA = 400;
   calibratingG = 400;

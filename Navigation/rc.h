@@ -14,6 +14,6 @@ void init_RC();
 /************************************************************************/
 /* RC values */
 /************************************************************************/
-extern volatile byte rc_input[RC_CHANNEL_COUNT];
+extern volatile uint16_t rc_input[RC_CHANNEL_COUNT];
 
 #endif  /* RC_H */

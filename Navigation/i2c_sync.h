@@ -18,6 +18,7 @@ void i2c_write(uint8_t data );
 void i2c_stop(void);
 uint8_t i2c_readAck();
 uint8_t i2c_readNak(void);
+uint8_t i2c_readReg(uint8_t add, uint8_t reg);
 	
 
 #endif /* I2C_SYNC_H_ */

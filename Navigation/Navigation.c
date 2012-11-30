@@ -2,46 +2,52 @@
 #include "motor.h"
 #include "rc.h"
 #include "sensor.h"
+#include "sysparam.h"
 
 
+#define LED B, 5
 
-
-int main(void)
+void task_rc()
 {
-	//int input = 123;
+	uint16_t a;
+	//cli();
+	//a = rc_input[0];
+	//sei();
+	//a &= ~0x03f;
+		
+	//set_motor(RMOTOR, a);
+	set_motor(LMOTOR, a);
+}
+
+void init()
+{
 	cli();
-	
+	load_sysparam();
+	init_timer();
 	init_uart();
 	init_motors();
 	init_RC();
 	init_sensors();
-	
 	sei();
 	
-	printf("__START__");
+	printf("__START__\n");
+}
+
+int main(void)
+{
+	uint32_t prev_time = now();
+	
+	init();
 	
 	while(1) {
-		int a, i;
-		cli();
-		a = rc_input[0];
-		sei();
-		a -= 85;
+		uint32_t time = now();
 		
-		
-		//gyro_getADC();
-		//acc_getADC();
-		mag_getADC();
-		
-		//for (i = 0; i < 3; i++) {
-			i = 0;
-			printf("%d\n", magADC[i]);
-		//}
-		
-		
-		set_motor(RMOTOR, a);
-		set_motor(LMOTOR, a);
-		
-		//if (calibratingA == 0) _delay_ms(50);
-	}
+		task_rc();
+		task_sensors();
 
+		if (time - prev_time > 500000) {
+			printf("%06ld: %d\n", time, magADC[0]);
+			prev_time = time;
+		}
+	}
 }
