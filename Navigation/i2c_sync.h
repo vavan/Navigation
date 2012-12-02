@@ -9,7 +9,7 @@
 #ifndef I2C_SYNC_H_
 #define I2C_SYNC_H_
 
-
+void i2c_init(void);
 size_t i2c_read_reg_to_buf(uint8_t add, uint8_t reg, void *buf, size_t size);
 void swap_endianness(void *buf, size_t size);
 void i2c_writeReg(uint8_t add, uint8_t reg, uint8_t val);

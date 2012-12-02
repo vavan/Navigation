@@ -11,10 +11,10 @@ ISR(PCINT2_vect) {
 	int i;
 	uint16_t delta;
 	static uint32_t edge_time[RC_CHANNEL_COUNT];
-	byte pin[RC_CHANNEL_COUNT];
+	//uint8_t pin[RC_CHANNEL_COUNT];
 	uint32_t time = now();
 
-	pin[0] = GPIO_Get(RC1);
+	//pin[0] = GPIO_Get(RC1);
 	//pin[1] = GPIO_Get(RC2);
 	//pin[2] = GPIO_Get(RC3);
 	//sei();

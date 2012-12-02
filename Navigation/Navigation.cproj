@@ -131,7 +131,13 @@
     <Compile Include="motor.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="Navigation.c">
+    <Compile Include="main.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="navigation.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="navigation.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="rc.c">

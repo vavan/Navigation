@@ -1,5 +1,6 @@
 #include "global.h"
 #include <avr/eeprom.h>
+#include <string.h>
 #include "sysparam.h"
 
 
@@ -24,7 +25,7 @@ SysParam_t sysparam;
 uint8_t calc_checksum(uint8_t *src, uint8_t size)
 {
 	uint8_t i, sum = SYSPARAM_MAGIC;
-	for (i < 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		sum += (uint8_t)(src[i]);
 	}
 	return sum;
@@ -51,5 +52,5 @@ void load_sysparam()
 
 void save_sysparam()
 {
-	eeprom_write_block((void*)&sysparam, (const void*)0, sizeof(sysparam));	
+	eeprom_write_block((const void*)&sysparam, (void*)0, sizeof(sysparam));	
 }

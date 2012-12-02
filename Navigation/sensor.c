@@ -5,31 +5,20 @@
 #include "sysparam.h"
 #include "sensor.h"
 
-// TBD
-void writeParams(uint16_t a)
-{
-	//TBD
-}
 
 #define delay(x) _delay_ms(x)
-#define constrain(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
-
 
 
 uint16_t calibratingG;
 uint16_t calibratingA = 0;
 int16_t  gyroADC[3],accADC[3],magADC[3];
 int16_t gyroZero[3] = {0,0,0};
-int16_t angle[2]    = {0,0};  // absolute angle inclination in multiple of 0.1 degree    180 deg = 1800
 
 uint16_t acc_1G;  
 int32_t  BaroAlt;
 int16_t  acc_25deg;
 
-#define ROLL       0
-#define PITCH      1
-#define YAW        2
-#define THROTTLE   3
+
 
 
 
@@ -308,6 +297,9 @@ void ACC_init () {
   i2c_writeReg(BMA180_ADDRESS, 0x35, control);
   delay(5); 
   acc_1G = 255;
+  
+  
+  acc_25deg = acc_1G * 0.423;
 }
 
 void acc_getADC () {
@@ -528,7 +520,7 @@ void init_sensors()
   if (GYRO) Gyro_init();
   //if (BARO) Baro_init();
   if (MAG) Mag_init();
-  if (ACC) {ACC_init();acc_25deg = acc_1G * 0.423;}
+  if (ACC) ACC_init();
   
   //memset(&conf, 0, sizeof(conf));
   //memset(&f, 0, sizeof(f));
