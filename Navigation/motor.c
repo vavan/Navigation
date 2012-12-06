@@ -26,3 +26,9 @@ void set_motor(int motor, int value)
 	//}
 }
 
+void task_motors()
+{
+	//TBD
+	set_motor(RMOTOR, 0);
+	set_motor(LMOTOR, 0);
+}

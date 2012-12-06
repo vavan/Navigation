@@ -1,6 +1,19 @@
 #ifndef SENSOR_H_
 #define SENSOR_H_
 
+#define GYRO 1
+#define ACC 1
+#define MAG 1
+#define BARO 1
+
+void gyro_init();
+void gyro_obtain();
+
+
+void gyro_getADC();
+void acc_getADC();
+void mag_getADC();
+	
 void task_sensors();
 void init_sensors();
 extern int16_t  gyroADC[3],accADC[3],magADC[3];

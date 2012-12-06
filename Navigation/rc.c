@@ -1,11 +1,16 @@
 #include "global.h"
 #include "rc.h"
 
-#define RC1 D, 2
-#define RC2 D, 6
-#define RC3 D, 7
+#define RC_R D, 6
+#define RC_P D, 7
+#define RC_Y D, 6
+#define RC_T D, 2
 
-volatile uint16_t rc_input[RC_CHANNEL_COUNT];
+//volatile uint16_t rc_input[RC_CHANNEL_COUNT];
+volatile uint16_t rcData[8];//[RC_CHANNEL_COUNT];
+int16_t rcCommand[4];       // interval [1000;2000] for THROTTLE and [-500;+500] for ROLL/PITCH/YAW
+int16_t lookupPitchRollRC[6];// lookup table for expo & RC rate PITCH+ROLL
+int16_t lookupThrottleRC[11];// lookup table for expo & mid THROTTLE
 
 ISR(PCINT2_vect) {
 	int i;
@@ -20,21 +25,22 @@ ISR(PCINT2_vect) {
 	//sei();
 	i = 0;
 	//for (i=0; i<RC_CHANNEL_COUNT; i++) {
-		if (GPIO_Get(RC1)) {
+		if (GPIO_Get(RC_T)) {
 			edge_time[i] = time;
 		} else {
 			delta = time - edge_time[i];
-			rc_input[i] = delta;
+			rcData[i] = delta;
 		}
 	//}
 }
 
 void init_RC()
 {
-	GPIO_DirIn(RC1);
-	GPIO_DirIn(RC2);
-	GPIO_DirIn(RC3);
+	GPIO_DirIn(RC_R);
+	GPIO_DirIn(RC_P);
+	GPIO_DirIn(RC_Y);
+	GPIO_DirIn(RC_T);
 
 	PCICR = 1 << PCIE2;
-	PCMSK2 = GPIO_Mask(RC1) | GPIO_Mask(RC2) | GPIO_Mask(RC3);
+	PCMSK2 = GPIO_Mask(RC_R) | GPIO_Mask(RC_P) | GPIO_Mask(RC_Y) | GPIO_Mask(RC_T);
 }

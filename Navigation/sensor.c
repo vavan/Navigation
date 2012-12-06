@@ -9,6 +9,58 @@
 #define delay(x) _delay_ms(x)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define delay(x) _delay_ms(x)
+
+
 uint16_t calibratingG;
 uint16_t calibratingA = 0;
 int16_t  gyroADC[3],accADC[3],magADC[3];
@@ -33,10 +85,7 @@ int16_t  acc_25deg;
 #define HMC5883
 #define BMP085
   
-#define GYRO 1
-#define ACC 1
-#define MAG 1
-#define BARO 1
+
   
   
 #define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = -X; accADC[PITCH]  = -Y; accADC[YAW]  =  Z;}
@@ -71,7 +120,7 @@ int16_t  acc_25deg;
 /*** I2C address ***/
 #define BMA180_ADDRESS 0x40
 
-#define ITG3200_ADDRESS 0X68
+
 
 
 uint8_t rawADC[6];
@@ -79,6 +128,110 @@ uint8_t rawADC[6];
 void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
 	i2c_read_reg_to_buf(add, reg, &rawADC, 6);
 }
+
+
+
+
+
+
+
+/************************************************************************/
+/*        GYRO                                                          */
+/************************************************************************/
+#if GYRO
+#define ITG3200_ADDRESS 0X68
+#define ITG3200_SMPLRT_DIV 0  //8000Hz
+#define ITG3200_DLPF_CFG   0
+#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}		  
+#define CALIBRATION_COUNT 400
+
+
+
+void ITG3200_gyro_init()
+{
+	  delay(100);
+	  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x80); //register: Power Management  --  value: reset device
+	  delay(5);
+	  i2c_writeReg(ITG3200_ADDRESS, 0x16, 0x18 + ITG3200_DLPF_CFG); //register: DLPF_CFG - low pass filter configuration
+	  delay(5);
+	  i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x03); //register: Power Management  --  value: PLL with Z Gyro reference
+  
+	  delay(100);
+}
+
+void ITG3200_gyro_obtain()
+{
+	i2c_getSixRawADC(ITG3200_ADDRESS,0X1D);
+	GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
+	((rawADC[2]<<8) | rawADC[3])/4 ,
+	((rawADC[4]<<8) | rawADC[5])/4 );
+  
+	//GYRO_Common();
+}
+
+void gyro_calibrate()
+{
+	static int32_t g[3];
+	int axis;
+	if (calibratingG > 0) {
+		for (axis = 0; axis < 3; axis++) {
+			// Reset g[axis] at start of calibration
+			if (calibratingG == CALIBRATION_COUNT) g[axis]=0;
+			// Sum up 400 readings
+			g[axis] +=gyroADC[axis];
+			// Clear global variables for next reading
+			gyroADC[axis]=0;
+			gyroZero[axis]=0;
+			if (calibratingG == 1) {
+				gyroZero[axis]=g[axis]/CALIBRATION_COUNT;
+				// TBD blinkLED(10,15,1);
+			}
+		}
+		calibratingG--;
+	}
+}	
+	
+
+void gyro_init()
+{
+	ITG3200_gyro_init();
+}
+
+void gyro_obtain()
+{
+	static int16_t previousGyroADC[3] = {0,0,0};
+	int axis;
+	ITG3200_gyro_obtain();
+	if (calibratingG > 0) {
+		gyro_calibrate();
+	}		
+	for (axis = 0; axis < 3; axis++) {
+		gyroADC[axis]  -= gyroZero[axis];
+		//anti gyro glitch, limit the variation between two consecutive readings
+		gyroADC[axis] = constrain(gyroADC[axis],previousGyroADC[axis]-800,previousGyroADC[axis]+800);
+		previousGyroADC[axis] = gyroADC[axis];
+	}
+
+}
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -321,7 +474,7 @@ void acc_getADC () {
 // I2C adress: 0xD0 (8bit)   0x68 (7bit)
 // principle:
 // 1) VIO is connected to VDD
-// 2) I2C adress is set to 0x69 (AD0 PIN connected to VDD)
+// 2) I2C address is set to 0x69 (AD0 PIN connected to VDD)
 // or 2) I2C adress is set to 0x68 (AD0 PIN connected to GND)
 // 3) sample rate = 1000Hz ( 1kHz/(div+1) )
 // ************************************************************************************************************
@@ -517,7 +670,7 @@ void init_sensors()
   delay(100);
   i2c_init();
   delay(100);
-  if (GYRO) Gyro_init();
+  if (GYRO) gyro_init();//Gyro_init();
   //if (BARO) Baro_init();
   if (MAG) Mag_init();
   if (ACC) ACC_init();

@@ -8,17 +8,20 @@
 
 #define LED B, 5
 
+
+
 void task_rc()
 {
-	uint16_t a;
+	//uint16_t a;
 	//cli();
-	a = rc_input[0];
+	//a = rcData[0];
 	//sei();
 	//a &= ~0x03f;
 		
 	//set_motor(RMOTOR, a);
-	set_motor(LMOTOR, a);
+	//set_motor(LMOTOR, a);
 }
+
 
 void init()
 {
@@ -27,39 +30,66 @@ void init()
 	init_timer();
 	init_uart();
 	init_motors();
-	init_RC();
+	//init_RC();
 	init_sensors();
+	init_navigation();
 	sei();
 	
+	
+
 	printf("__START__\n");
 }
 
 //#define PIDMIX(X,Y,Z) rcCommand[THROTTLE] + axisPID[ROLL]*X + axisPID[PITCH]*Y + YAW_DIRECTION * axisPID[YAW]*Z
+extern int16_t gyroData[3];
 
-void task_navigation()
+
+void print_navigation()
 {
 	//int16_t motor[2];
 	//motor[0] = PIDMIX(+1, 0, 0); //LEFT
 	//motor[1] = PIDMIX(-1, 0, 0); //RIGHT
-	printf("%06d\r", axisPID[0]);
+	
+	
+	//printf("%06d\n", axisPID[2]);
+	printf("%06d\n", gyroADC[2]);
 }
 
 
 int main(void)
 {
+	int i;
 	uint32_t prev_time = now();
+	uint32_t gyro_time = now();
+	uint16_t r = 0;
 	
 	init();
 	
+	for(i=0; i< 8; i ++) {
+		rcData[i] = 1500;
+	}
+	rcData[THROTTLE] = 1200;
+	
 	while(1) {
 		uint32_t time = now();
+		int16_t d;
 		
-		task_rc();
-		task_sensors();
-		task_navigation();
+		
+		
+		//task_rc();
+		//task_navigation();
+		//task_motors();
+		gyro_obtain();
+		
+		if (calibratingG == 0) {
+			d = gyroADC[2];
+			r += (float)d / (time - gyro_time);
+			gyro_time = time;
+		}			
 
 		if (time - prev_time > 500000) {
-			printf("%06ld: %d\n", time, magADC[0]);
+			int a = (int)(r * 1000);
+			printf("%d\n", r);
 			prev_time = time;
 		}
 	}

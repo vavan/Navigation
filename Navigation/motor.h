@@ -26,4 +26,6 @@ void init_motors();
 void set_motor(int motor, int value);
 
 
+void task_motors();
+
 #endif /* MOTOR_H */
