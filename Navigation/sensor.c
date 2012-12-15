@@ -138,14 +138,14 @@ void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
 /************************************************************************/
 /*        GYRO                                                          */
 /************************************************************************/
-#if GYRO
+
 #define ITG3200_ADDRESS 0X68
 #define ITG3200_SMPLRT_DIV 0  //8000Hz
 #define ITG3200_DLPF_CFG   0
 #define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}		  
 #define CALIBRATION_COUNT 400
 
-
+#if 0
 
 void ITG3200_gyro_init()
 {
@@ -594,9 +594,12 @@ void mag_getADC() {
       }
     } else {
       tCal = 0;
-      for(axis=0;axis<3;axis++)
-        sysparam.mag.zero[axis] = (magZeroTempMin[axis] + magZeroTempMax[axis])/2;
+      for(axis=0;axis<3;axis++) {
+         sysparam.mag.zero[axis] = (magZeroTempMin[axis] + magZeroTempMax[axis])/2;
+	  }		
+		sysparam.mag.is_calibrated = 1;
 		save_sysparam();
+		LEDPIN_OFF;
     }
   }
 }
@@ -670,7 +673,7 @@ void init_sensors()
   delay(100);
   i2c_init();
   delay(100);
-  if (GYRO) gyro_init();//Gyro_init();
+  if (GYRO) Gyro_init();
   //if (BARO) Baro_init();
   if (MAG) Mag_init();
   if (ACC) ACC_init();

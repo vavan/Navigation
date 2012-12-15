@@ -16,13 +16,16 @@ typedef struct
 } CalibParam_t;
 
 
-
-
-typedef struct
+typedef struct 
 {
 	uint8_t magic;
 	uint8_t checksum;
 	uint8_t version;
+} SysParamHeader_t;
+
+typedef struct
+{
+	SysParamHeader_t header;
 	CalibParam_t mag;
 	CalibParam_t acc;
 } SysParam_t;

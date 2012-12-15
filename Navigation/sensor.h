@@ -6,8 +6,8 @@
 #define MAG 1
 #define BARO 1
 
-void gyro_init();
-void gyro_obtain();
+//void gyro_init();
+//void gyro_obtain();
 
 
 void gyro_getADC();

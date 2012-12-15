@@ -25,17 +25,18 @@ void task_rc()
 
 void init()
 {
+
+	
 	cli();
-	load_sysparam();
 	init_timer();
 	init_uart();
 	init_motors();
 	//init_RC();
-	init_sensors();
-	init_navigation();
 	sei();
 	
-	
+	load_sysparam();
+	init_sensors();
+	init_navigation();	
 
 	printf("__START__\n");
 }
@@ -52,7 +53,7 @@ void print_navigation()
 	
 	
 	//printf("%06d\n", axisPID[2]);
-	printf("%06d\n", gyroADC[2]);
+	printf("%06d\n", heading);
 }
 
 
@@ -77,19 +78,20 @@ int main(void)
 		
 		
 		//task_rc();
-		//task_navigation();
+		task_navigation();
 		//task_motors();
-		gyro_obtain();
-		
+		//gyro_obtain();
+		/*
 		if (calibratingG == 0) {
 			d = gyroADC[2];
 			r += (float)d / (time - gyro_time);
 			gyro_time = time;
-		}			
+		}*/			
 
 		if (time - prev_time > 500000) {
-			int a = (int)(r * 1000);
-			printf("%d\n", r);
+			//int a = (int)(r * 1000);
+			printf("%04d %04d %04d\n", magADC[ROLL]/3, magADC[PITCH]/3, magADC[YAW]/3);
+			//printf("%04d %04d %04d\n", angle[ROLL], angle[PITCH], heading);
 			prev_time = time;
 		}
 	}

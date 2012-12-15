@@ -433,6 +433,7 @@ void pid_calculation()
 
 void task_navigation()
 {
+	mag_getADC();
 	computeIMU();
 	pid_calculation();
 	

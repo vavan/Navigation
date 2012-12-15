@@ -3,7 +3,8 @@
 
 
 #define F_CPU 16000000UL
-#define LEDPIN_TOGGLE              PINB |= 1<<5;
+#define LEDPIN_TOGGLE           PINB |= 1<<5;
+#define LEDPIN_OFF				PORTB &= ~(1<<5);
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
