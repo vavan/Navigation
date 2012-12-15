@@ -20,6 +20,14 @@ const SysParam_t initial =
 		.is_calibrated = 0,
 		.zero = {0,0,0},
 	},
+	.acc = {
+		.is_calibrated = 0,
+		.zero = {0,0,0},
+	},
+	.gyro = {
+		.is_calibrated = 0,
+		.zero = {0,0,0},
+	},	
 };
 
 SysParam_t sysparam;

@@ -13,7 +13,7 @@ typedef struct
 {
 	uint8_t is_calibrated;
 	int16_t zero[3];
-} CalibParam_t;
+} ZeroParam_t;
 
 
 typedef struct 
@@ -26,8 +26,9 @@ typedef struct
 typedef struct
 {
 	SysParamHeader_t header;
-	CalibParam_t mag;
-	CalibParam_t acc;
+	ZeroParam_t mag;
+	ZeroParam_t acc;
+	ZeroParam_t gyro;
 } SysParam_t;
 
 extern SysParam_t sysparam;
