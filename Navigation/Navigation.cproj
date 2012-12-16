@@ -110,6 +110,12 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="filter.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="filter.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="global.c">
       <SubType>compile</SubType>
     </Compile>
@@ -123,6 +129,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="i2c_sync.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="math.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="math.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="motor.c">

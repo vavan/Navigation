@@ -1,0 +1,8 @@
+		"C:\Program Files (x86)\Atmel\Atmel Studio 6.0\extensions\Atmel\AVRGCC\3.4.1.95\AVRToolchain\bin\avr-size.exe" "Navigation.elf"
+		   text	   data	    bss	    dec	    hex	filename
+		  13940	    162	    368	  14470	   3886	Navigation.elf
+	Done executing task "RunCompilerTask".
+	Using "RunOutputFileVerifyTask" task from assembly "C:\Program Files (x86)\Atmel\Atmel Studio 6.0\Vs\Compiler.Task.dll".
+	Task "RunOutputFileVerifyTask"
+				Program Memory Usage 	:	14102 bytes   43.0 % Full
+				Data Memory Usage 		:	530 bytes   25.9 % Full

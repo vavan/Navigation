@@ -4,7 +4,7 @@
 #include "sysparam.h"
 
 
-#define SYSPARAM_VERSION 0x08
+#define SYSPARAM_VERSION 0x0A
 #define SYSPARAM_MAGIC 0xAB
 
 
@@ -48,7 +48,7 @@ void validate_sysparam()
 	if ((sysparam.header.magic != SYSPARAM_MAGIC) ||
 	    (sysparam.header.checksum != checksum) ||
 		(sysparam.header.version != SYSPARAM_VERSION)) {
-			printf("------------init- ");
+			printf("------------init- \n");
 			memcpy((void*)&sysparam, (const void*)&initial, sizeof(sysparam));
 			save_sysparam();
 		}
@@ -57,7 +57,7 @@ void validate_sysparam()
 void load_sysparam()
 {
 	eeprom_read_block((void*)&sysparam, (const void*)0, sizeof(sysparam));
-	printf("------------load- %d", sysparam.header.checksum);
+	printf("------------load- %d\n", sysparam.header.checksum);
 	validate_sysparam();
 }
 
@@ -65,5 +65,5 @@ void save_sysparam()
 {
 	sysparam.header.checksum = calc_checksum(&sysparam, sizeof(sysparam));
 	eeprom_write_block((const void*)&sysparam, (void*)0, sizeof(sysparam));	
-	printf("------------save- %d", sysparam.header.checksum);
+	printf("------------save- %d\n", sysparam.header.checksum);
 }

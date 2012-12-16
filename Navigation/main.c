@@ -41,8 +41,6 @@ void init()
 	printf("__START__\n");
 }
 
-//#define PIDMIX(X,Y,Z) rcCommand[THROTTLE] + axisPID[ROLL]*X + axisPID[PITCH]*Y + YAW_DIRECTION * axisPID[YAW]*Z
-extern int16_t gyroData[3];
 
 
 void print_navigation()
@@ -57,12 +55,12 @@ void print_navigation()
 }
 
 
-int main(void)
+int main()
 {
 	int i;
-	uint32_t prev_time = now();
-	uint32_t gyro_time = now();
-	uint16_t r = 0;
+	uint32_t print_time = now();
+	uint32_t navigation_time = now();
+	uint16_t count = 0;
 	
 	init();
 	
@@ -72,27 +70,33 @@ int main(void)
 	rcData[THROTTLE] = 1200;
 	
 	while(1) {
+		int16_t value[3];
+		int16_t delta[3];
+		
 		uint32_t time = now();
-		int16_t d;
+		
+		gyro_obtain(value);
+		gyro_get_angle(value, delta);
 		
 		
 		
 		//task_rc();
-		task_navigation();
+		//if (time - navigation_time > 10000) {
+		//	task_navigation();
+		//	navigation_time = time;
+		//}
+		
 		//task_motors();
-		//gyro_obtain();
-		/*
-		if (calibratingG == 0) {
-			d = gyroADC[2];
-			r += (float)d / (time - gyro_time);
-			gyro_time = time;
-		}*/			
+		
 
-		if (time - prev_time > 500000) {
-			//int a = (int)(r * 1000);
-			printf("%04d %04d %04d\n", magADC[ROLL]/3, magADC[PITCH]/3, magADC[YAW]/3);
+		if (time - print_time > 1000000) {
+			printf("%04d %04d %04d\n", delta[ROLL], delta[PITCH], delta[YAW]);
+			//printf("%04d %04d %04d\n", accSmooth[ROLL], accSmooth[PITCH], accSmooth[YAW]);
+			//printf("%04d %04d %04d\n", gyroData[ROLL]/8, gyroData[PITCH]/8, gyroData[YAW]/8);
+			//printf("%04d %04d %04d\n", magADC[ROLL]/3, magADC[PITCH]/3, magADC[YAW]/3);
 			//printf("%04d %04d %04d\n", angle[ROLL], angle[PITCH], heading);
-			prev_time = time;
+			//printf("%04d\n", count);
+			print_time = time;
 		}
 	}
 }

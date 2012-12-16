@@ -3,8 +3,6 @@
 
 
 #define F_CPU 16000000UL
-#define LEDPIN_TOGGLE           PINB |= 1<<5;
-#define LEDPIN_OFF				PORTB &= ~(1<<5);
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -15,16 +13,18 @@
 #include "gpio.h"
 
 
-extern uint8_t g_sreg;
-#define DISABLE_INT() {g_sreg = SREG; cli();}
-#define ENABLE_INT() {SREG = g_sreg;}
-
 #define constrain(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 
+
+#define LEDPIN_TOGGLE()     PINB |= 1<<5;
+#define LEDPIN_OFF()		PORTB &= ~(1<<5);
+#define delay(x)			_delay_ms(x)
+
 uint32_t now();
 void init_timer();
+
 
 
 #define ROLL       0

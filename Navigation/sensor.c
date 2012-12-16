@@ -6,98 +6,55 @@
 #include "sensor.h"
 
 
-#define delay(x) _delay_ms(x)
 
+/************************************************************************/
+/*           Sensor outputs                                             */
+/************************************************************************/
 
-
-
-uint16_t calibratingG;
-uint16_t calibratingA = 0;
-int16_t  gyroADC[3],accADC[3],magADC[3];
-int16_t gyroZero[3] = {0,0,0};
+//int16_t  gyroADC[3],accADC[3],magADC[3];
 
 uint16_t acc_1G;  
-int32_t  BaroAlt;
-int16_t  acc_25deg;
 
 
 
-
-
-// part of config.h
-
-#define POWERPIN_PINMODE           ;
-#define POWERPIN_ON                ;
-#define POWERPIN_OFF               ;
-
-#define ITG3200
-#define BMA180
-#define HMC5883
-#define BMP085
-  
-
-  
-  
-#define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = -X; accADC[PITCH]  = -Y; accADC[YAW]  =  Z;}
-#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}
-#define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  =  X; magADC[PITCH]  =  Y; magADC[YAW]  = -Z;}
-
-
-
-    /*********************    Lowpass filter for some gyros    ****************************/
-      /* ITG3200 & ITG3205 Low pass filter setting. In case you cannot eliminate all vibrations to the Gyro, you can try
-         to decrease the LPF frequency, only one step per try. As soon as twitching gone, stick with that setting.
-         It will not help on feedback wobbles, so change only when copter is randomly twiching and all dampening and
-         balancing options ran out. Uncomment only one option!
-         IMPORTANT! Change low pass filter setting changes PID behaviour, so retune your PID's after changing LPF.*/
-      //#define ITG3200_LPF_256HZ     // This is the default setting, no need to uncomment, just for reference
-      //#define ITG3200_LPF_188HZ
-      //#define ITG3200_LPF_98HZ
-      //#define ITG3200_LPF_42HZ
-      //#define ITG3200_LPF_20HZ
-      //#define ITG3200_LPF_10HZ      // Use this only in extreme cases, rather change motors and/or props
-	      #define ITG3200_SMPLRT_DIV 0  //8000Hz
-	      #define ITG3200_DLPF_CFG   0
-	  
-	  
-// SENSORS
-	  
-
-// ************************************************************************************************************
-// board orientation and setup
-// ************************************************************************************************************
-
-/*** I2C address ***/
-#define BMA180_ADDRESS 0x40
-
-
-
-
+/************************************************************************/
+/*           I2C Helpers                                                */
+/************************************************************************/
 uint8_t rawADC[6];
 
-void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
+void i2c_getSixRawADC(uint8_t add, uint8_t reg) 
+{
 	i2c_read_reg_to_buf(add, reg, &rawADC, 6);
 }
 
 
 
 
-
-
-
-#define ITG3200_ADDRESS 0X68
-#define ITG3200_SMPLRT_DIV 0  //8000Hz
-#define ITG3200_DLPF_CFG   0
-#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}		  
-#define ITG3200_DLPF_CFG 0
-
-
+/************************************************************************/
+/*           Sensors configuration                                      */
+/************************************************************************/
+// Gyro & Acc calibration
 #define CALIBRATION_COUNT 400
 #define CALIBRATION_LAST 1
 
 
-#define SET_VECTOR(vector, value) {vector[0] = value; vector[1] = value;vector[2] = value;}
+// Physical sensors
+#define ITG3200
+#define BMA180
+#define HMC5883
+#define BMP085
 
+// Orientation
+#define ACC_ORIENTATION(X, Y, Z)  {value[ROLL] = -X; value[PITCH] = -Y; value[YAW] =  Z;}
+#define GYRO_ORIENTATION(X, Y, Z) {value[ROLL] =  Y; value[PITCH] = -X; value[YAW] = -Z;}
+#define MAG_ORIENTATION(X, Y, Z)  {value[ROLL] =  X; value[PITCH] =  Y; value[YAW] = -Z;}
+
+
+
+// TBD
+#define POWERPIN_PINMODE           ;
+#define POWERPIN_ON                ;
+#define POWERPIN_OFF               ;
 
 
 /************************************************************************/
@@ -118,22 +75,51 @@ void i2c_getSixRawADC(uint8_t add, uint8_t reg) {
 
 #if defined(ITG3200)
 
-void gyro_calibrate() 
+/*********************    Lowpass filter for some gyros    ****************************/
+/* ITG3200 & ITG3205 Low pass filter setting. In case you cannot eliminate all vibrations to the Gyro, you can try
+    to decrease the LPF frequency, only one step per try. As soon as twitching gone, stick with that setting.
+    It will not help on feedback wobbles, so change only when copter is randomly twitching and all dampening and
+    balancing options ran out. Uncomment only one option!
+    IMPORTANT! Change low pass filter setting changes PID behavior, so re-tune your PID's after changing LPF.*/
+#define ITG3200_LPF_256HZ 0
+#define ITG3200_LPF_188HZ 1
+#define ITG3200_LPF_98HZ  2
+#define ITG3200_LPF_42HZ  3
+#define ITG3200_LPF_20HZ  4
+#define ITG3200_LPF_10HZ  5
+
+// Actual LPF value
+#define ITG3200_DLPF_CFG  ITG3200_LPF_256HZ
+
+
+// Constants
+#define ITG3200_ADDRESS 0x68
+
+
+// Get physical values
+void gyro_getADC (int16_t *value) 
 {
-	// Calculate average, shift Z down by acc_1G and store values in EEPROM at end of calibration
+	i2c_getSixRawADC(ITG3200_ADDRESS,0X1D);
+	GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
+					((rawADC[2]<<8) | rawADC[3])/4 ,
+					((rawADC[4]<<8) | rawADC[5])/4 );
+}
+
+// Calculate average, shift Z down by acc_1G and store values in EEPROM at end of calibration
+void gyro_calibrate(int16_t *value) 
+{
 	static int32_t g[3];
 	static uint16_t calibrating = CALIBRATION_COUNT;
 	
-	if (calibrating == CALIBRATION_COUNT) {
-		// start
-		SET_VECTOR(g, 0);
-	} else if (calibrating > CALIBRATION_LAST) {
-		// proceed
+	if (calibrating == CALIBRATION_COUNT) { // start
 		for (int axis = 0; axis < 3; axis++) {
-			g[axis] += gyroADC[axis];
+			g[axis] = 0;
+		}
+	} else if (calibrating > CALIBRATION_LAST) { // proceed
+		for (int axis = 0; axis < 3; axis++) {
+			g[axis] += value[axis];
 		}		
-	} else {
-		// finish
+	} else { // finish
 		for (int axis = 0; axis < 3; axis++) {
 			sysparam.gyro.zero[axis] = g[axis]/CALIBRATION_COUNT;
 		}
@@ -143,31 +129,32 @@ void gyro_calibrate()
 	calibrating--;
 }
 
-void gyro_anti_glitch() 
+//anti gyro glitch, limit the variation between two consecutive readings
+void gyro_anti_glitch(int16_t *value) 
 {
-	//anti gyro glitch, limit the variation between two consecutive readings
 	static int16_t previousGyroADC[3] = {0,0,0};
 	for (int axis = 0; axis < 3; axis++) {
-		gyroADC[axis] = constrain(gyroADC[axis], previousGyroADC[axis]-800, previousGyroADC[axis]+800);
-		previousGyroADC[axis] = gyroADC[axis];
+		value[axis] = constrain(value[axis], previousGyroADC[axis]-800, previousGyroADC[axis]+800);
+		previousGyroADC[axis] = value[axis];
 	}
 }
 
-void gyro_obtain() {
-
-	gyro_getADC();
-	gyro_anti_glitch();
+void gyro_obtain(int16_t *value) 
+{
+	gyro_getADC(value);
+	gyro_anti_glitch(value);
 	
 	if (sysparam.gyro.is_calibrated) {
 		for (int axis = 0; axis < 3; axis++) {
-			gyroADC[axis]  -= sysparam.gyro.zero[axis];
+			value[axis] -= sysparam.gyro.zero[axis];
 		}
 	} else {
-		gyro_calibrate();
+		gyro_calibrate(value);
 	}			
 }
 
-void Gyro_init() {
+void gyro_init() 
+{
   delay(100);
   i2c_writeReg(ITG3200_ADDRESS, 0x3E, 0x80); //register: Power Management  --  value: reset device
   delay(5);
@@ -177,16 +164,6 @@ void Gyro_init() {
   
   delay(100);
 }
-
-void gyro_getADC () {
-  i2c_getSixRawADC(ITG3200_ADDRESS,0X1D);
-  GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
-                    ((rawADC[2]<<8) | rawADC[3])/4 ,
-                    ((rawADC[4]<<8) | rawADC[5])/4 );
-}
-
-
-
 #endif
 
 
@@ -213,8 +190,19 @@ void gyro_getADC () {
 // ************************************************************************************************************
 #if defined(BMA180)
 
+/*** I2C address ***/
+#define BMA180_ADDRESS 0x40
 
-void acc_calibrate()
+void acc_getADC (int16_t *value) 
+{
+	i2c_getSixRawADC(BMA180_ADDRESS,0x02);
+	//usefull info is on the 14 bits  [2-15] bits  /4 => [0-13] bits  /4 => 12 bit resolution
+	ACC_ORIENTATION( ((rawADC[1]<<8) | rawADC[0])/16 ,
+					((rawADC[3]<<8) | rawADC[2])/16 ,
+					((rawADC[5]<<8) | rawADC[4])/16 );
+}
+
+void acc_calibrate(int16_t *value)
 {
 	// Calculate average, shift Z down by acc_1G and store values in EEPROM at end of calibration
 	static int32_t a[3];
@@ -222,11 +210,13 @@ void acc_calibrate()
 	
 	if (calibrating == CALIBRATION_COUNT) {
 		// start
-		SET_VECTOR(a, 0);
+		for (int axis = 0; axis < 3; axis++) {
+			a[axis] = 0;
+		}
 	} else if (calibrating > CALIBRATION_LAST) {
 		// proceed
 		for (int axis = 0; axis < 3; axis++) {
-			a[axis] += accADC[axis];
+			a[axis] += value[axis];
 		}			
 	} else {
 		// finish
@@ -237,22 +227,23 @@ void acc_calibrate()
 		sysparam.acc.is_calibrated = 1;
 		save_sysparam();
 	} 
-	
 	calibrating--;
 }
 
-void acc_obtain() {	
-	acc_getADC();	
+void acc_obtain(int16_t *value) 
+{	
+	acc_getADC(value);	
 	if (sysparam.acc.is_calibrated) {
 		for(int axis = 0; axis < 3; axis++) {
-			accADC[axis]  -=  sysparam.acc.zero[axis];
+			value[axis] -= sysparam.acc.zero[axis];
 		}
 	} else {
-		acc_calibrate();
+		acc_calibrate(value);
 	}					
 }
 
-void ACC_init () {
+void acc_init() 
+{
 	delay(10);
 	//default range 2G: 1G = 4096 unit.
 	i2c_writeReg(BMA180_ADDRESS,0x0D,1<<4); // register: ctrl_reg0  -- value: set bit ee_w to 1 to enable writing
@@ -273,17 +264,6 @@ void ACC_init () {
 	i2c_writeReg(BMA180_ADDRESS, 0x35, control);
 	delay(5);
 	acc_1G = 255;
-	
-	
-	acc_25deg = acc_1G * 0.423;
-}
-
-void acc_getADC () {
-	i2c_getSixRawADC(BMA180_ADDRESS,0x02);
-	//usefull info is on the 14 bits  [2-15] bits  /4 => [0-13] bits  /4 => 12 bit resolution
-	ACC_ORIENTATION( ((rawADC[1]<<8) | rawADC[0])/16 ,
-	((rawADC[3]<<8) | rawADC[2])/16 ,
-	((rawADC[5]<<8) | rawADC[4])/16 );
 }
 #endif
 
@@ -296,24 +276,29 @@ void acc_getADC () {
 // ************************************************************************************************************
 // I2C Compass common function
 // ************************************************************************************************************
+// ************************************************************************************************************
+// I2C Compass HMC5883
+// ************************************************************************************************************
+// I2C adress: 0x3C (8bit)   0x1E (7bit)
+// ************************************************************************************************************
+
 #if defined(HMC5883)
 #define MAG_ADDRESS 0x1E
 #define MAG_DATA_REGISTER 0x03
 #define MAG_CALIBRATION_DURATION 30000000
 
-
-
 static float   magCal[3] = {1.0,1.0,1.0};  // gain for each axis, populated at sensor init
 static uint8_t magInit = 0;
 
-void mag_getADC() {
+void mag_getADC(int16_t *value) 
+{
 	i2c_getSixRawADC(MAG_ADDRESS,MAG_DATA_REGISTER);
 	MAG_ORIENTATION( ((rawADC[0]<<8) | rawADC[1]) ,
-	((rawADC[4]<<8) | rawADC[5]) ,
-	((rawADC[2]<<8) | rawADC[3]) );
+					((rawADC[4]<<8) | rawADC[5]) ,
+					((rawADC[2]<<8) | rawADC[3]) );
 }
 
-void mag_calibrate()
+void mag_calibrate(int16_t *value)
 {
 	static int16_t magZeroTempMin[3];
 	static int16_t magZeroTempMax[3];
@@ -323,15 +308,15 @@ void mag_calibrate()
 		// start
 		calibration_start = now();
 	    for(int axis=0; axis<3; axis++) {
-		    magZeroTempMin[axis] = magADC[axis];
-		    magZeroTempMax[axis] = magADC[axis];
+		    magZeroTempMin[axis] = value[axis];
+		    magZeroTempMax[axis] = value[axis];
 	    }
 	} else if (now() - calibration_start < MAG_CALIBRATION_DURATION) {
 		// proceed
-	    LEDPIN_TOGGLE;
+	    LEDPIN_TOGGLE();
 		for(int axis=0; axis<3; axis++) {
-			if (magADC[axis] < magZeroTempMin[axis]) magZeroTempMin[axis] = magADC[axis];
-			if (magADC[axis] > magZeroTempMax[axis]) magZeroTempMax[axis] = magADC[axis];
+			if (value[axis] < magZeroTempMin[axis]) magZeroTempMin[axis] = value[axis];
+			if (value[axis] > magZeroTempMax[axis]) magZeroTempMax[axis] = value[axis];
 		}
 		
 	} else {
@@ -342,39 +327,31 @@ void mag_calibrate()
 		
 		sysparam.mag.is_calibrated = 1;
 		save_sysparam();
-		LEDPIN_OFF;
+		LEDPIN_OFF();
 	}
 }
 
-void mag_obtain() {
-	 
-	mag_getADC();
+void mag_obtain(int16_t *value) 
+{ 
+	mag_getADC(value);
 	for (int axis = 0; axis < 3; axis++) {
-		magADC[axis]  = magADC[axis]  * magCal[axis];
+		value[axis]  = value[axis]  * magCal[axis];
 	}		
   
 	if (sysparam.mag.is_calibrated) {
 		if (magInit) {
 			for (int axis = 0; axis < 3; axis++) {
-				magADC[axis] -= sysparam.mag.zero[axis];
+				value[axis] -= sysparam.mag.zero[axis];
 			}
 		}			
 	} else {
-		mag_calibrate();
+		mag_calibrate(value);
 	}	
 }
-
-
-
-
-// ************************************************************************************************************
-// I2C Compass HMC5883
-// ************************************************************************************************************
-// I2C adress: 0x3C (8bit)   0x1E (7bit)
-// ************************************************************************************************************
-
   
-void Mag_init() { 
+void mag_init() 
+{
+	int16_t magPhy[3];
 	delay(100);
 	// force positiveBias
 	i2c_writeReg(MAG_ADDRESS ,0x00 ,0x71 ); //Configuration Register A  -- 0 11 100 01  num samples: 8 ; output rate: 15Hz ; positive bias
@@ -387,11 +364,11 @@ void Mag_init() {
 	// by placing the mode register into single-measurement mode (0x01), two data acquisition cycles will be made on each magnetic vector.
 	// The first acquisition values will be subtracted from the second acquisition, and the net measurement will be placed into the data output registers
 	delay(100);
-	mag_getADC();
+	mag_getADC(magPhy);
 	delay(10);
-	magCal[ROLL]  =  1160.0 / abs(magADC[ROLL]);
-	magCal[PITCH] =  1160.0 / abs(magADC[PITCH]);
-	magCal[YAW]   =  1080.0 / abs(magADC[YAW]);
+	magCal[ROLL]  =  1160.0 / abs(magPhy[ROLL]);
+	magCal[PITCH] =  1160.0 / abs(magPhy[PITCH]);
+	magCal[YAW]   =  1080.0 / abs(magPhy[YAW]);
 
 	// leave test mode
 	i2c_writeReg(MAG_ADDRESS, 0x00, 0x70 ); //Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
@@ -586,7 +563,7 @@ void Baro_update() {
     case 3: 
       i2c_BMP085_UP_Read(); 
       i2c_BMP085_Calculate(); 
-      BaroAlt = (1.0f - pow(pressure/101325.0f, 0.190295f)) * 4433000.0f; //centimeter
+      //BaroAlt = (1.0f - pow(pressure/101325.0f, 0.190295f)) * 4433000.0f; //centimeter
       bmp085_ctx.state = 0; bmp085_ctx.deadline += 5000; 
       break;
   } 
@@ -607,14 +584,9 @@ void init_sensors()
   delay(100);
   i2c_init();
   delay(100);
-  if (GYRO) Gyro_init();
+  if (GYRO) gyro_init();
   //if (BARO) Baro_init();
-  if (MAG) Mag_init();
-  if (ACC) ACC_init();
-  
-  //memset(&conf, 0, sizeof(conf));
-  //memset(&f, 0, sizeof(f));
-  
-  calibratingA = 400;
-  calibratingG = 400;
+  if (MAG) mag_init();
+  if (ACC) acc_init();
+
 }
